@@ -15,6 +15,8 @@ import           Control.Monad.Trans.Except.Extra (firstExceptT, newExceptT)
 
 import           Cardano.Api
 
+import qualified Cardano.Api.Typed as Typed
+
 import           Cardano.CLI.Helpers (textToByteString)
 import           Cardano.CLI.Shelley.Parsers
                    (OutputFile (..), SigningKeyFile (..), VerificationKeyFile (..),
@@ -56,12 +58,13 @@ runAddressCmd cmd =
 
 runAddressKeyGen :: VerificationKeyFile -> SigningKeyFile -> ExceptT ShelleyAddressCmdError IO ()
 runAddressKeyGen (VerificationKeyFile vkeyPath) (SigningKeyFile skeyPath) = do
-    sk <- liftIO shelleyGenSigningKey
-    let vk = getPaymentVerificationKey sk
+    sk <- liftIO $ Typed.generateSigningKey Typed.AsPaymentKey
+    let vk = getPaymentVerificationKey' sk :: Typed.VerificationKey Typed.PaymentKey
+
     firstExceptT ShelleyAddressCmdPayVerificationKeyWriteErr
-      . ExceptT $ writePaymentVerificationKey vkeyPath vk
+      . ExceptT $ writePaymentVerificationKey' vkeyPath vk
     firstExceptT ShelleyAddressCmdPaySigningKeyWriteErr
-      . ExceptT $ writeSigningKey skeyPath sk
+      . ExceptT $ writePaymentSigningKey skeyPath sk
 
 runAddressKeyHash :: VerificationKeyFile -> Maybe OutputFile -> ExceptT ShelleyAddressCmdError IO ()
 runAddressKeyHash (VerificationKeyFile vkeyPath) mOutputFp =
@@ -80,7 +83,7 @@ runAddressBuild :: VerificationKeyFile
                 -> ExceptT ShelleyAddressCmdError IO ()
 runAddressBuild (VerificationKeyFile payVkeyFp) mstkVkeyFp nw mOutFp =
   firstExceptT ShelleyAddressCmdPayVerificationKeyReadErrr $ do
-    payVKey <- newExceptT $ readPaymentVerificationKey payVkeyFp
+    payVKey <- newExceptT $ readVerificationKey' (Typed.AsVerificationKey Typed.AsPaymentKey) payVkeyFp
     mstkVKey <- case mstkVkeyFp of
                   Just (VerificationKeyFile stkVkeyFp) ->
                     Just <$> newExceptT (readStakingVerificationKey stkVkeyFp)

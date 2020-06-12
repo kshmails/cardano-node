@@ -11,6 +11,7 @@ module Cardano.Api
   , PaymentVerificationKey (..)
   , StakingVerificationKey (..)
   , getGenesisVerificationKey
+  , getPaymentVerificationKey'
   , getPaymentVerificationKey
   , getStakingVerificationKey
   , byronGenSigningKey
@@ -126,6 +127,9 @@ module Cardano.Api
   ) where
 
 import           Cardano.Prelude
+
+-- Convert/replace functions in this module from functions in 'Cardano.Api.Typed'
+import qualified Cardano.Api.Typed as Typed
 
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import           Data.Coerce (coerce)
@@ -357,6 +361,12 @@ getGenesisVerificationKey kp =
     SigningKeyShelley sk -> GenesisVerificationKeyShelley (Shelley.VKey vk)
       where
         vk = deriveVerKeyDSIGN sk
+
+getPaymentVerificationKey'
+  :: Typed.Key keyrole
+  => Typed.SigningKey keyrole
+  -> Typed.VerificationKey keyrole
+getPaymentVerificationKey' = Typed.getVerificationKey
 
 getPaymentVerificationKey :: SigningKey -> PaymentVerificationKey
 getPaymentVerificationKey kp =
